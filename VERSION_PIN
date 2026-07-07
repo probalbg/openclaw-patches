@@ -1,0 +1,14 @@
+# OpenClaw version pin
+# Do not upgrade without explicit Probal approval
+# Kael: monitor upstream releases during idle time, assess backport potential
+
+VERSION=2026.6.11
+COMMIT=e085fa1
+PINNED_ON=2026-07-07
+REASON=Stability. All patches tested against this version. We backport and patch locally instead of upgrading.
+
+# Upgrade requires:
+# 1. Explicit approval from Probal
+# 2. Assessment of what breaks vs what we gain
+# 3. Check if needed features can be backported instead
+# 4. After upgrade: run bash patches/apply-all.sh to restore local fixes
