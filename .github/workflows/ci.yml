@@ -1,0 +1,38 @@
+name: OpenClaw Patches CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openclaw-patches-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate patch scripts without applying them
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Check shell syntax
+        run: |
+          set -euo pipefail
+          bash -n apply-all.sh
+          find . -maxdepth 1 -type f -name '*.patch.sh' -print0 | xargs -0 -r -n1 bash -n
+      - name: Verify documented version pin and patch inventory
+        run: |
+          set -euo pipefail
+          grep -Fx 'VERSION=2026.6.11' VERSION_PIN
+          grep -Fx 'COMMIT=e085fa1' VERSION_PIN
+          test -s MANIFEST.md
+          test -s RESEARCH.md
+          test -s 001-schema-lookup-colon.patch.sh
+          git diff --check
