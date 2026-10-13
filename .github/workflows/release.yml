@@ -1,0 +1,66 @@
+name: OpenClaw Patches Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: openclaw-patches-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package-and-release:
+    name: Validate and publish patch bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate tagged commit is on main
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Validate patch bundle
+        run: |
+          set -euo pipefail
+          bash -n apply-all.sh
+          find . -maxdepth 1 -type f -name '*.patch.sh' -print0 | xargs -0 -r -n1 bash -n
+          grep -Fx 'VERSION=2026.6.11' VERSION_PIN
+          grep -Fx 'COMMIT=e085fa1' VERSION_PIN
+          test -s MANIFEST.md
+          test -s RESEARCH.md
+          test -s 001-schema-lookup-colon.patch.sh
+          git diff --check
+
+      - name: Create reproducible source bundle and checksum
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          git archive --format=tar --prefix="openclaw-patches-${GITHUB_REF_NAME}/" "$GITHUB_SHA" | gzip -n > "dist/openclaw-patches-${GITHUB_REF_NAME}.tar.gz"
+          (
+            cd dist
+            sha256sum "openclaw-patches-${GITHUB_REF_NAME}.tar.gz" > "openclaw-patches-${GITHUB_REF_NAME}.sha256"
+          )
+          tar -tzf "dist/openclaw-patches-${GITHUB_REF_NAME}.tar.gz" | head -30
+          cat "dist/openclaw-patches-${GITHUB_REF_NAME}.sha256"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: OpenClaw Patches ${{ github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/openclaw-patches-${{ github.ref_name }}.tar.gz
+            dist/openclaw-patches-${{ github.ref_name }}.sha256
