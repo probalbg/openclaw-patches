@@ -18,6 +18,24 @@ TARGET="/usr/lib/node_modules/openclaw/dist/schema-Ctppm7Dp.js"
 OLD='pattern: "^[A-Za-z0-9_./\\[\\]\\-*]+$"'
 NEW='pattern: "^[A-Za-z0-9_./\\[\\]\\-*:]+$"'
 
+# Read-only status mode. This branch must never write to the target.
+if [[ "${1:-}" == "--check" ]]; then
+    if [[ ! -f "$TARGET" ]]; then
+        echo "[SKIP] Target file not found: $TARGET"
+        exit 0
+    fi
+    if grep -qF "$NEW" "$TARGET"; then
+        echo "[APPLIED] Patch is present: $TARGET"
+        exit 0
+    fi
+    if grep -qF "$OLD" "$TARGET"; then
+        echo "[PENDING] Patch can be applied: $TARGET"
+        exit 0
+    fi
+    echo "[WARN] Neither old nor new pattern found; review upstream changes: $TARGET" >&2
+    exit 1
+fi
+
 if [ ! -f "$TARGET" ]; then
     echo "[SKIP] Target file not found: $TARGET"
     exit 0
@@ -48,6 +66,6 @@ else:
     }
     echo "[PATCHED] $TARGET"
 else
-    echo "[WARN] Neither old nor new pattern found - file may have changed upstream"
+    echo "[WARN] Neither old nor new pattern found - file may have changed upstream" >&2
     exit 1
 fi
